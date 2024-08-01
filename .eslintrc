@@ -1,3 +1,4 @@
+{
     "env": {
         "es2021": true,
         "node": true
@@ -29,6 +30,21 @@
         ]
     },
     "rules": {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "args": "all",
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ],
+      "no-underscore-dangle": [
+        "error",
+        {
+          "allow": ["_id"]
+        }
+      ],
         "import/extensions": [
             "error",
             "ignorePackages",
