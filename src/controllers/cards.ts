@@ -1,11 +1,45 @@
 import { Request, Response, NextFunction } from 'express';
-import { Error as MongooseError } from 'mongoose';
-import Card from '../models/cards';
+import { Error as MongooseError, Model } from 'mongoose';
+import Card, { ICard } from '../models/cards';
 import { constants } from 'http2';
 import BadRequestError from '../errors/bad-request-error';
 import ConflictError from '../errors/conflict-error';
 import NotFoundError from '../errors/not-found-error';
+import UnauthorizedError from '../errors/unauthorized-error';
+import ForbiddenError from '../errors/forbidden-error';
+import { SessionRequest } from 'middleware/auth';
 
+
+const updateCardLikes = async(
+  Model: Model<ICard>,
+  operation: 'like'| 'dislike',
+  req: SessionRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      return next(new UnauthorizedError('Необходима авторизация'));
+    }
+    const { userId } = req.user;
+    const { cardId } = req.params;
+    const updateOperation = operation === 'like' ?
+    { $addToSet: { likes: userId } } :
+    { $pull: { likes: userId } };
+    const card = await Model.findByIdAndUpdate(
+      cardId,
+      updateOperation,
+      { new: true }
+    )
+    .orFail(() => new NotFoundError('Карточка с указанным _id не найдена'));
+    return res.send(card);
+  } catch (error) {
+    if(error instanceof MongooseError.CastError) {
+      return next(new BadRequestError('Передан несуществующий _id карточки'));
+    }
+    return next(error);
+  }
+}
 
 
 const getCards = async (req: Request, res: Response, next: NextFunction) => {
@@ -17,10 +51,13 @@ const getCards = async (req: Request, res: Response, next: NextFunction) => {
   }
 }
 
-const createCard = async (req: Request, res: Response, next: NextFunction) => {
+const createCard = async (req: SessionRequest, res: Response, next: NextFunction) => {
   try {
     const { name, link } = req.body;
-    const id = res.locals.user._id;
+    if (!req.user || !req.user.userId) {
+      return next(new UnauthorizedError('Необходима авторизация'));
+    }
+    const id = req.user.userId;
     const newCard = await Card.create({ name, link, owner: id })
     res.status(constants.HTTP_STATUS_CREATED).send(newCard);
   } catch (error) {
@@ -36,10 +73,16 @@ const createCard = async (req: Request, res: Response, next: NextFunction) => {
 
 }
 
-const deleteCardById = async (req: Request, res: Response, next: NextFunction) => {
+const deleteCardById = async (req: SessionRequest, res: Response, next: NextFunction) => {
   try {
     const { cardId } = req.params;
-    await Card.findByIdAndDelete(cardId).orFail(() => new NotFoundError('Карточка с указанным _id не найдена'));
+    const card = await Card.findById(cardId).orFail(() => new NotFoundError('Карточка с указанным _id не найдена'));
+
+    if (card.owner.toString()!== req.user?.userId.toString()) {
+      return next(new ForbiddenError('Нет прав на удаление карточки'));
+    }
+
+    await Card.findByIdAndDelete(cardId);
     return res.status(constants.HTTP_STATUS_OK).send({ message: 'Карточка успешно удалена' });
 
   } catch (error) {
@@ -51,42 +94,14 @@ const deleteCardById = async (req: Request, res: Response, next: NextFunction) =
 
 }
 
-const likeCard = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { cardId } = req.params;
-    const likedCard = await Card
-      .findByIdAndUpdate(
-        cardId,
-        { $addToSet: { likes: res.locals.user._id } },
-        { new: true },
-      )
-      .orFail(() => new NotFoundError('Карточка с указанным _id не найдена'));
-      return res.send(likedCard);
-  } catch (error) {
-    if(error instanceof MongooseError.CastError) {
-      return next(new BadRequestError('Передан несуществующий _id карточки'));
-    }
-    return next(error);
-  }
+const likeCard = async (req: SessionRequest, res: Response, next: NextFunction) => {
+
+  await updateCardLikes(Card, 'like', req, res, next);
 }
 
-const dislikeCard = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { cardId } = req.params;
-    const dislikedCard = await Card.findByIdAndUpdate(
-      cardId,
-      { $pull: { likes: res.locals.user._id } },
-      { new: true },
-    )
-    .orFail(() => new NotFoundError('Карточка с указанным _id не найдена'));
-      return res.send(dislikedCard);
-  } catch (error) {
-    if(error instanceof MongooseError.CastError) {
-      return next(new BadRequestError('Передан несуществующий _id карточки'));
-    }
-    return next(error);
-  }
+const dislikeCard = async (req: SessionRequest, res: Response, next: NextFunction) => {
 
+  await updateCardLikes(Card, 'dislike', req, res, next);
 
 }
 

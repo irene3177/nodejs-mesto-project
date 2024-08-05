@@ -36,6 +36,7 @@
           "args": "all",
           "argsIgnorePattern": "^_",
           "varsIgnorePattern": "^_",
+          "caughtErrors": "all",
           "caughtErrorsIgnorePattern": "^_"
         }
       ],
