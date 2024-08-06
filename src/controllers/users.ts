@@ -4,11 +4,12 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { constants } from 'http2';
 import User, { IUser } from '../models/users';
-import BadRequestError from '../errors/bad-request-error';
-import NotFoundError from '../errors/not-found-error';
-import ConflictError from '../errors/conflict-error';
-import UnauthorizedError from '../errors/unauthorized-error';
+import BadRequestError from '../errors/badRequestError';
+import NotFoundError from '../errors/notFoundError';
+import ConflictError from '../errors/conflictError';
+import UnauthorizedError from '../errors/unauthorizedError';
 import { SessionRequest } from '../middleware/auth';
+import { ERRORS, JWT_SECRET } from '../constants';
 
 
 const getUsers = async (req: Request, res: Response, next: NextFunction) => {
@@ -32,7 +33,7 @@ const createUser =  async (req: Request, res: Response, next: NextFunction) => {
     if (error instanceof MongooseError.ValidationError) {
       return next(new BadRequestError(error.message));
     }
-    if(error instanceof Error && error.message.startsWith("E11000")) {
+    if(error instanceof Error && error.message.startsWith(ERRORS.DUPLICATE)) {
       return next(new ConflictError('Пользователь с таким email уже существует.'));
     }
     return next(error);
@@ -42,12 +43,12 @@ const createUser =  async (req: Request, res: Response, next: NextFunction) => {
 const getUserById = async (req: Request, res: Response, next: NextFunction) => {
 
   const { userId } = req.params;
-  findUserById(userId, res, next);
+  await findUserById(userId, res, next);
 }
 
 const getUserByToken= async (req: SessionRequest, res: Response, next: NextFunction) => {
     const userId = req.user?.userId;
-    findUserById(userId, res, next);
+    await findUserById(userId, res, next);
 }
 
 const updateUser = async (req: SessionRequest, res: Response, next: NextFunction) => {
@@ -69,18 +70,23 @@ const updateUserAvatar = async (req: SessionRequest, res: Response, next: NextFu
 
 
 const login = async (req: Request, res: Response, next: NextFunction) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email }).select('+password').orFail(() => new UnauthorizedError('Неверный логин или пароль'));
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email }).select('+password').orFail(() => new UnauthorizedError('Неверный логин или пароль'));
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    return next(new UnauthorizedError('Неверный логин или пароль'));
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return next(new UnauthorizedError('Неверный логин или пароль'));
+    }
+    const payload = { userId: user._id };
+    const secret = JWT_SECRET;
+
+    const token = jwt.sign(payload, secret, { expiresIn: '7d' });
+    return res.json({ token });
+
+  } catch (error) {
+    return next(error);
   }
-  const payload = { userId: user._id };
-  const secret = process.env.JWT_SECRET || 'secret-key';
-
-  const token = jwt.sign(payload, secret, { expiresIn: '7d' });
-  return res.json({ token });
 }
 
 const findUserById = async (userId: string, res: Response, next: NextFunction) => {

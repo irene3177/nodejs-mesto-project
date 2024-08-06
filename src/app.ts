@@ -1,15 +1,15 @@
 import "dotenv/config";
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import mongoose from 'mongoose';
-import { join } from 'path';
-import { errors, celebrate, Joi } from 'celebrate';
+import { errors } from 'celebrate';
 import cors from 'cors';
 import usersRoutes from './routes/users';
 import cardsRoutes from './routes/cards';
-import errorHandler from './middleware/error-handler';
+import errorHandler from './middleware/errorHandler';
+import notFoundHandler from "./middleware/notFound";
 import { createUser, login } from './controllers/users';
 import { requestLogger, errorLogger } from './middleware/logger';
-import { urlRegex } from './models/users';
+import { signupValidation, signinValidation } from './validators/userValidator';
 
 
 
@@ -28,28 +28,14 @@ app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(join(__dirname, "public")));
-
 app.use(requestLogger);
 
-app.post('/signin', celebrate({
-  body: Joi.object().keys({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
-  }),
-}),login);
-
-app.post('/signup', celebrate({
-  body: Joi.object().keys({
-    name: Joi.string().max(30),
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
-    about: Joi.string().max(200),
-    avatar: Joi.string().regex(urlRegex),
-  }),
-}), createUser);
+app.post('/signin', signinValidation,login);
+app.post('/signup', signupValidation, createUser);
 app.use('/users', usersRoutes);
 app.use('/cards', cardsRoutes);
+
+app.use(notFoundHandler);
 
 app.use(errorLogger);
 

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { celebrate, Joi } from 'celebrate';
 import {
   getUsers,
   getUserById,
@@ -8,7 +7,8 @@ import {
   updateUserAvatar,
 } from '../controllers/users';
 import authenticateJWT from '../middleware/auth';
-import { urlRegex } from '../models/users';
+import { updateUserAvatarValidation, updateUserValidation, userIdValidation } from '../validators/userValidator';
+
 
 
 const router = Router();
@@ -18,24 +18,11 @@ router.get('/', authenticateJWT, getUsers);
 
 router.get('/me', authenticateJWT, getUserByToken);
 
-router.patch('/me', celebrate({
-  body: Joi.object().keys({
-    name: Joi.string().max(30),
-    about: Joi.string().max(200),
-  }),
-}), authenticateJWT, updateUser);
+router.patch('/me', updateUserValidation, authenticateJWT, updateUser);
 
-router.patch('/me/avatar', celebrate({
-  body: Joi.object().keys({
-    avatar: Joi.string().regex(urlRegex),
-  }),
-}), authenticateJWT, updateUserAvatar);
+router.patch('/me/avatar', updateUserAvatarValidation, authenticateJWT, updateUserAvatar);
 
-router.get('/:userId', celebrate({
-  params: Joi.object().keys({
-    userId: Joi.string().alphanum().length(24),
-  }),
-}), authenticateJWT, getUserById);
+router.get('/:userId', userIdValidation, authenticateJWT, getUserById);
 
 
 

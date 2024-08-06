@@ -2,12 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { Error as MongooseError, Model } from 'mongoose';
 import Card, { ICard } from '../models/cards';
 import { constants } from 'http2';
-import BadRequestError from '../errors/bad-request-error';
-import ConflictError from '../errors/conflict-error';
-import NotFoundError from '../errors/not-found-error';
-import UnauthorizedError from '../errors/unauthorized-error';
-import ForbiddenError from '../errors/forbidden-error';
-import { SessionRequest } from 'middleware/auth';
+import BadRequestError from '../errors/badRequestError';
+import NotFoundError from '../errors/notFoundError';
+import ForbiddenError from '../errors/forbiddenError';
+import { SessionRequest } from '../middleware/auth';
 
 
 const updateCardLikes = async(
@@ -18,10 +16,8 @@ const updateCardLikes = async(
   next: NextFunction
 ) => {
   try {
-    if (!req.user || !req.user.userId) {
-      return next(new UnauthorizedError('Необходима авторизация'));
-    }
-    const { userId } = req.user;
+
+    const userId = req.user?.userId;
     const { cardId } = req.params;
     const updateOperation = operation === 'like' ?
     { $addToSet: { likes: userId } } :
@@ -54,20 +50,13 @@ const getCards = async (req: Request, res: Response, next: NextFunction) => {
 const createCard = async (req: SessionRequest, res: Response, next: NextFunction) => {
   try {
     const { name, link } = req.body;
-    if (!req.user || !req.user.userId) {
-      return next(new UnauthorizedError('Необходима авторизация'));
-    }
-    const id = req.user.userId;
+    const id = req.user?.userId;
     const newCard = await Card.create({ name, link, owner: id })
     res.status(constants.HTTP_STATUS_CREATED).send(newCard);
   } catch (error) {
     if (error instanceof MongooseError.ValidationError) {
       return next(new BadRequestError(error.message));
     }
-    if(error instanceof Error && error.message.startsWith("E11000")) {
-      return next(new ConflictError('Имя уже используется'));
-    }
-
     return next(error);
   }
 
@@ -91,18 +80,14 @@ const deleteCardById = async (req: SessionRequest, res: Response, next: NextFunc
     }
     return next(error);
   }
-
 }
 
 const likeCard = async (req: SessionRequest, res: Response, next: NextFunction) => {
-
   await updateCardLikes(Card, 'like', req, res, next);
 }
 
 const dislikeCard = async (req: SessionRequest, res: Response, next: NextFunction) => {
-
   await updateCardLikes(Card, 'dislike', req, res, next);
-
 }
 
 export { getCards, createCard, deleteCardById, likeCard, dislikeCard };
