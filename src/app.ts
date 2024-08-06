@@ -5,6 +5,7 @@ import { errors } from 'celebrate';
 import cors from 'cors';
 import usersRoutes from './routes/users';
 import cardsRoutes from './routes/cards';
+import authenticateJWT from './middleware/auth';
 import errorHandler from './middleware/errorHandler';
 import notFoundHandler from './middleware/notFound';
 import { createUser, login } from './controllers/users';
@@ -29,6 +30,8 @@ app.use(requestLogger);
 
 app.post('/signin', signinValidation, login);
 app.post('/signup', signupValidation, createUser);
+
+app.use(authenticateJWT);
 app.use('/users', usersRoutes);
 app.use('/cards', cardsRoutes);
 

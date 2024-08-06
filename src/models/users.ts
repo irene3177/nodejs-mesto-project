@@ -1,7 +1,6 @@
 import { model, Schema } from 'mongoose';
 import validator from 'validator';
-
-export const urlRegex: RegExp = /^(https?:\/\/)(www\.)?[\w\-._~:/?#[\]@!$&'()*+,;=]+(\.[a-z]{2,})(\/[\w\-._~:/?#[\]@!$&'()*+,;=]*)?(#\w*)?$/i;
+import { URL_REGEX } from '../constants';
 
 export interface IUser {
   name: string;
@@ -39,7 +38,7 @@ const userSchema = new Schema<IUser>(
     },
     avatar: {
       type: String,
-      match: [urlRegex, 'Неверный формат ссылки на аватарку'],
+      match: [URL_REGEX, 'Неверный формат ссылки на аватарку'],
       default: 'https://pictures.s3.yandex.net/resources/jacques-cousteau_1604399756.png',
     },
   },

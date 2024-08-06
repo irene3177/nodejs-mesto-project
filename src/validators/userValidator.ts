@@ -1,5 +1,5 @@
 import { celebrate, Joi } from 'celebrate';
-import { urlRegex } from '../models/users';
+import { URL_REGEX } from '../constants';
 
 export const signupValidation = celebrate({
   body: Joi.object().keys({
@@ -7,7 +7,7 @@ export const signupValidation = celebrate({
     email: Joi.string().email().required(),
     password: Joi.string().required(),
     about: Joi.string().max(200),
-    avatar: Joi.string().regex(urlRegex),
+    avatar: Joi.string().regex(URL_REGEX),
   }),
 });
 
@@ -27,7 +27,7 @@ export const updateUserValidation = celebrate({
 
 export const updateUserAvatarValidation = celebrate({
   body: Joi.object().keys({
-    avatar: Joi.string().regex(urlRegex),
+    avatar: Joi.string().regex(URL_REGEX),
   }),
 });
 

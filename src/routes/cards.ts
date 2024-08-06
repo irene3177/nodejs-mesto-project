@@ -6,15 +6,14 @@ import {
   likeCard,
   dislikeCard,
 } from '../controllers/cards';
-import authenticateJWT from '../middleware/auth';
 import { cardIdValidation, createCardValidation } from '../validators/cardValidator';
 
 const router = Router();
 
-router.get('/', authenticateJWT, getCards);
-router.post('/', createCardValidation, authenticateJWT, createCard);
-router.delete('/:cardId', cardIdValidation, authenticateJWT, deleteCardById);
-router.put('/:cardId/likes', cardIdValidation, authenticateJWT, likeCard);
-router.delete('/:cardId/likes', cardIdValidation, authenticateJWT, dislikeCard);
+router.get('/', getCards);
+router.post('/', createCardValidation, createCard);
+router.delete('/:cardId', cardIdValidation, deleteCardById);
+router.put('/:cardId/likes', cardIdValidation, likeCard);
+router.delete('/:cardId/likes', cardIdValidation, dislikeCard);
 
 export default router;
