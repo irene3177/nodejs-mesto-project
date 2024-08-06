@@ -7,11 +7,11 @@ export interface SessionRequest extends Request {
   user?: JwtPayload;
 }
 
-const authenticateJWT = (req: SessionRequest, res: Response, next: NextFunction) => {
+const authenticateJWT = (req: SessionRequest, _res: Response, next: NextFunction) => {
   const { authorization } = req.headers;
   let payload: JwtPayload | undefined;
 
-  if (!authorization ||!authorization.startsWith('Bearer ')) {
+  if (!authorization || !authorization.startsWith('Bearer ')) {
     return next(new UnauthorizedError('Необходима авторизация'));
   }
 
@@ -19,17 +19,14 @@ const authenticateJWT = (req: SessionRequest, res: Response, next: NextFunction)
 
   const secret = JWT_SECRET;
   try {
-    payload = jwt.verify(token, secret || 'secret-key') as JwtPayload;
-
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    payload = jwt.verify(token, secret) as JwtPayload;
   } catch (_error) {
     return next(new UnauthorizedError('Необходима авторизация'));
   }
 
   req.user = payload;
 
-  next();
+  return next();
 };
 
 export default authenticateJWT;

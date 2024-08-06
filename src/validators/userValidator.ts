@@ -33,6 +33,6 @@ export const updateUserAvatarValidation = celebrate({
 
 export const userIdValidation = celebrate({
   params: Joi.object().keys({
-    userId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/),
+    userId: Joi.string().hex().length(24),
   }),
 });

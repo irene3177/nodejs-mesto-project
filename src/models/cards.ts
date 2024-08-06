@@ -1,6 +1,5 @@
 import { model, Schema } from 'mongoose';
 
-
 export interface ICard {
   name: string;
   link: string;
@@ -31,7 +30,7 @@ const cardSchema = new Schema<ICard>({
   createdAt: {
     type: Date,
     default: Date.now,
-  }
-})
+  },
+});
 
 export default model<ICard>('card', cardSchema);

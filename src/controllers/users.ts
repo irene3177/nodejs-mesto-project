@@ -11,45 +11,95 @@ import UnauthorizedError from '../errors/unauthorizedError';
 import { SessionRequest } from '../middleware/auth';
 import { ERRORS, JWT_SECRET } from '../constants';
 
+const findUserById = async (userId: string, res: Response, next: NextFunction) => {
+  try {
+    const user = await User.findById(userId).orFail(() => new NotFoundError('Пользователь не найден'));
+    return res.send(user);
+  } catch (error) {
+    if (error instanceof MongooseError.CastError) {
+      return next(new BadRequestError('Не валидный id'));
+    }
+    return next(error);
+  }
+};
 
-const getUsers = async (req: Request, res: Response, next: NextFunction) => {
+const updateById = async (
+  UserModel: Model<IUser>,
+  userId: string,
+  updateData: Partial<IUser>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const user = await UserModel.findByIdAndUpdate(
+      userId,
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      },
+    )
+      .orFail(() => new NotFoundError('Пользователь с указанным _id не найден'));
+    return res.send(user);
+  } catch (error) {
+    if (error instanceof MongooseError.CastError) {
+      return next(new BadRequestError('Не валидный _id'));
+    }
+    if (error instanceof MongooseError.ValidationError) {
+      return next(new BadRequestError('Переданы некорректные данные'));
+    }
+    return next(error);
+  }
+};
+
+const getUsers = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.find({});
-    res.send(users);
+    return res.send(users);
   } catch (error) {
-    next(error);
+    return next(error);
   }
-}
+};
 
-const createUser =  async (req: Request, res: Response, next: NextFunction) => {
+const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, email, password, about, avatar } = req.body;
-
+    const {
+      name,
+      email,
+      password,
+      about,
+      avatar,
+    } = req.body;
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    const newUser = await User.create({ name, email, password: hashedPassword, about, avatar });
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      about,
+      avatar,
+    });
     return res.status(constants.HTTP_STATUS_CREATED).send(newUser);
   } catch (error) {
     if (error instanceof MongooseError.ValidationError) {
       return next(new BadRequestError(error.message));
     }
-    if(error instanceof Error && error.message.startsWith(ERRORS.DUPLICATE)) {
+    if (error instanceof Error && error.message.startsWith(ERRORS.DUPLICATE)) {
       return next(new ConflictError('Пользователь с таким email уже существует.'));
     }
     return next(error);
   }
-}
+};
 
 const getUserById = async (req: Request, res: Response, next: NextFunction) => {
-
   const { userId } = req.params;
   await findUserById(userId, res, next);
-}
+};
 
-const getUserByToken= async (req: SessionRequest, res: Response, next: NextFunction) => {
-    const userId = req.user?.userId;
-    await findUserById(userId, res, next);
-}
+const getUserByToken = async (req: SessionRequest, res: Response, next: NextFunction) => {
+  const userId = req.user?.userId;
+  await findUserById(userId, res, next);
+};
 
 const updateUser = async (req: SessionRequest, res: Response, next: NextFunction) => {
   const userId = req.user?.userId;
@@ -58,16 +108,15 @@ const updateUser = async (req: SessionRequest, res: Response, next: NextFunction
     about: req.body.about,
   };
   await updateById(User, userId, updateData, res, next);
-}
+};
 
 const updateUserAvatar = async (req: SessionRequest, res: Response, next: NextFunction) => {
   const userId = req.user?.userId;
   const updateData = {
-    avatar: req.body.avatar
+    avatar: req.body.avatar,
   };
   await updateById(User, userId, updateData, res, next);
-}
-
+};
 
 const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -83,46 +132,11 @@ const login = async (req: Request, res: Response, next: NextFunction) => {
 
     const token = jwt.sign(payload, secret, { expiresIn: '7d' });
     return res.json({ token });
-
   } catch (error) {
     return next(error);
   }
-}
+};
 
-const findUserById = async (userId: string, res: Response, next: NextFunction) => {
-  try {
-
-    const user = await User.findById(userId).orFail(() => new NotFoundError('Пользователь не найден'));
-    res.send(user);
-  } catch (error) {
-    if(error instanceof MongooseError.CastError) {
-      return next(new BadRequestError('Не валидный id'));
-    }
-    return next(error);
-  }
-}
-
-const updateById = async(Model: Model<IUser>, userId: string, updateData: Partial<IUser>, res: Response, next: NextFunction) => {
-  try {
-    const user = await Model.findByIdAndUpdate(
-      userId,
-      updateData,
-      {
-        new: true,
-        runValidators: true
-      })
-      .orFail(() => new NotFoundError('Пользователь с указанным _id не найден'));
-    return res.send(user);
-  } catch (error) {
-    if(error instanceof MongooseError.CastError) {
-      return next(new BadRequestError('Не валидный _id'));
-    }
-    if(error instanceof MongooseError.ValidationError) {
-      return next(new BadRequestError('Переданы некорректные данные'))
-    }
-    return next(error);
-  }
-}
-
-export { getUsers, createUser, getUserById, getUserByToken, updateUser, updateUserAvatar, login };
-
+export {
+  getUsers, createUser, getUserById, getUserByToken, updateUser, updateUserAvatar, login,
+};
